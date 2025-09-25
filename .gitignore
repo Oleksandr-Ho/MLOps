@@ -1,0 +1,17 @@
+# Ignore homework input materials
+Input/
+
+# Terraform working directories and state files (state is stored remotely)
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+terraform.tfvars
+terraform.tfvars.json
+tfplan.out
+tfplan*.out
+
+# IDE / tooling
+.vscode/
+.idea/
+.DS_Store
