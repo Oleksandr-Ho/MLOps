@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mlflow-notes
+  namespace: mlflow
+  labels:
+    app.kubernetes.io/name: mlflow
+    app.kubernetes.io/managed-by: argocd
+    app.kubernetes.io/component: documentation
+  annotations:
+    docs.mlopscourse.dev/description: "Нотатки щодо доступу до сервісу MLflow"
+data:
+  README: |
+    Цей ConfigMap додається для демонстрації того, що ArgoCD може керувати будь-якими ресурсами в межах namespace mlflow.
+    Основне навантаження розгортається Helm-чартом bitnami/mlflow, який описано у файлі application.yaml.
+    ConfigMap не впливає на роботу сервісу, але допомагає відслідковувати GitOps-джерело правди.

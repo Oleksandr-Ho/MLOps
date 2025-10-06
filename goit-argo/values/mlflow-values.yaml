@@ -1,0 +1,46 @@
+# Налаштування Helm-чарту bitnami/mlflow з мінімальними вимогами до ресурсів.
+service:
+  type: ClusterIP
+  port: 5000
+
+mlflow:
+  defaultArtifactRoot: /bitnami/mlflow
+  extraEnvVars:
+    - name: MLFLOW_SERVER_DEFAULT_ARTIFACT_ROOT
+      value: /bitnami/mlflow
+    - name: MLFLOW_SERVER_PORT
+      value: "5000"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+
+backendStore:
+  database:
+    enabled: true
+    postgresql:
+      primary:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 250m
+            memory: 512Mi
+
+artifactStore:
+  enabled: true
+  minio:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 250m
+        memory: 512Mi
+
+ingress:
+  enabled: false

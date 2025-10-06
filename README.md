@@ -30,6 +30,19 @@
 │   ├── outputs.tf           # Вихідні дані кластера для кореня
 │   ├── terraform.tf
 │   └── variables.tf
+├── terraform/argocd/        # Окремий Terraform-проєкт для встановлення ArgoCD
+│   ├── backend.tf
+│   ├── main.tf              # namespace + Helm-реліз ArgoCD
+│   ├── outputs.tf           # Корисні команди (port-forward, пароль)
+│   ├── provider.tf          # Налаштування aws/kubernetes/helm
+│   ├── terraform.tf
+│   ├── variables.tf
+│   └── values/
+│       └── argocd-values.yaml
+├── goit-argo/               # Шаблон GitOps-репозиторію для MLflow
+│   ├── application.yaml
+│   ├── namespaces/
+│   └── values/
 └── README.md
 ```
 
@@ -85,6 +98,72 @@ kubectl get nodes
 ```
 
 Очікуємо побачити один вузол зі статусом `Ready`, створений CPU-групою. GPU-заглушка тримає `desired_size = 0`, щоб уникати зайвих витрат. Коли AWS відкриє доступ до GPU-типів, можна змінити `instance_types` і `desired_size` та повторно виконати `terraform apply`.
+
+## Розгортання ArgoCD через Terraform
+
+Додатковий модуль (`terraform/argocd`) встановлює ArgoCD у вже створений EKS-кластер.
+
+```bash
+cd terraform/argocd
+terraform init                     # підвантажує провайдери та модулі
+terraform plan \
+  -var aws_profile=default         # за потреби вкажіть інший профіль
+terraform apply
+```
+
+Основні налаштування знаходяться у файлі `values/argocd-values.yaml`. Тут сервіс працює як `ClusterIP`, увімкнено auto-sync параметри та зменшено запити ресурсів, щоб залишатися у межах Free Tier.
+
+Після завершення застосування Terraform ви отримаєте готові підказки у `terraform output`:
+
+```bash
+terraform output
+```
+
+Вивід містить namespace ArgoCD, назву сервісу для port-forward та готову команду для отримання початкового пароля адміністратора.
+
+## Доступ до ArgoCD UI
+
+1. Отримайте пароль:
+   ```bash
+   terraform output -raw argocd_initial_admin_password_cmd | bash
+   ```
+   або скористайтеся командою з попереднього пункту вручну.
+2. Запустіть port-forward:
+   ```bash
+   kubectl port-forward svc/argocd-argocd-server -n infra-tools 8080:443
+   ```
+3. Відкрийте веб-інтерфейс на <https://localhost:8080> та увійдіть під користувачем `admin`.
+
+> Якщо ви змінили назву Helm-релізу або namespace, підкоригуйте команду port-forward згідно з `terraform output`.
+
+## GitOps-деплой MLflow
+
+1. Створіть окремий публічний репозиторій на GitHub (наприклад, `https://github.com/Oleksandr-Ho/goit-argo`).
+2. Скопіюйте вміст каталогу `goit-argo/` у цей репозиторій і запуште в гілку `main`.
+3. Файл `application.yaml` уже вказує на вендорний Helm-чарт (розміщений у папці `charts/mlflow`) і містить налаштування auto-sync/self-heal.
+4. Після git push ArgoCD автоматично підхопить файл і розгорне MLflow у namespace `mlflow` (чарт використовує базовий образ `python:3.10-slim`, який під час старту встановлює `mlflow==2.9.2`).
+
+Перевірити стан можна командами:
+
+```bash
+kubectl get applications -n infra-tools
+kubectl get pods -n mlflow
+kubectl get svc -n mlflow
+```
+
+Для доступу до інтерфейсу MLflow виконайте port-forward:
+
+```bash
+kubectl port-forward deployment/mlflow-tracking -n mlflow 5000:5000
+```
+
+Після цього UI буде доступний на <http://localhost:5000>. (За потреби можна виконати `kubectl patch svc mlflow-tracking -n mlflow -p '{"spec":{"type":"ClusterIP"}}'`, щоб прибрати автоматично створений LoadBalancer і уникнути зайвих витрат.)
+
+## Посилання на GitOps-репозиторій
+
+- Репозиторій із Application: `https://github.com/Oleksandr-Ho/goit-argo`
+- Маніфест `application.yaml` і namespaces знаходяться безпосередньо у корені цього репозиторію.
+
 
 ## Повторне використання стану в наступних завданнях
 
