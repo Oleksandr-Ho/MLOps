@@ -3,6 +3,7 @@ Input/
 
 # Terraform working directories and state files (state is stored remotely)
 .terraform/
+**/.terraform/
 *.tfstate
 *.tfstate.*
 crash.log

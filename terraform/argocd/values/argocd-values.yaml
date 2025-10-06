@@ -1,0 +1,57 @@
+# Загальні параметри ArgoCD, які зменшують споживання ресурсів і прискорюють синхронізацію.
+configs:
+  params:
+    server.insecure: "true"          # Дозволяє порт-forward без TLS-сертифіката.
+    timeout.reconciliation: "180"     # Тайм-аут повторної синхронізації застосунків (у секундах).
+  rbac:
+    policy.default: role:readonly     # Гарантує мінімальні права за замовчуванням.
+    policy.csv: |
+      g, system:cluster-admins, role:admin
+
+server:
+  service:
+    type: ClusterIP                   # Працюємо всередині VPC, зовнішній LB не потрібен.
+    ports:
+      - name: https
+        port: 443
+        targetPort: 8080              # Слухач ArgoCD серверу усередині контейнера.
+  extraArgs:
+    - --insecure                      # Дозволяємо використовувати самопідписаний сертифікат.
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+repoServer:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+applicationSet:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

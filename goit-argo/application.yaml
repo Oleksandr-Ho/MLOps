@@ -1,0 +1,76 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mlflow
+  namespace: infra-tools
+  annotations:
+    docs.mlopscourse.dev/link: "https://github.com/Oleksandr-Ho/goit-argo"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Oleksandr-Ho/goit-argo.git
+    path: charts/mlflow
+    targetRevision: main
+    helm:
+      releaseName: mlflow
+      values: |
+        service:
+          type: ClusterIP
+          port: 5000
+        image:
+          registry: docker.io
+          repository: python
+          tag: "3.10-slim"
+        minio:
+          enabled: false
+        postgresql:
+          enabled: false
+        tracking:
+          auth:
+            enabled: false
+          persistence:
+            enabled: false
+          podSecurityContext:
+            enabled: false
+          containerSecurityContext:
+            enabled: false
+          service:
+            type: ClusterIP
+            ports:
+              http: 5000
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - |
+              pip install --no-cache-dir mlflow==2.9.2 && \
+              mlflow server --backend-store-uri sqlite:////bitnami/mlflow/mlruns.db \
+                --default-artifact-root /bitnami/mlflow/mlartifacts --host 0.0.0.0 --port 5000
+        run:
+          enabled: false
+        mlflow:
+          defaultArtifactRoot: /bitnami/mlflow/mlartifacts
+          extraEnvVars:
+            - name: MLFLOW_ARTIFACT_ROOT
+              value: /bitnami/mlflow/mlartifacts
+            - name: MLFLOW_BACKEND_STORE_URI
+              value: sqlite:////bitnami/mlflow/mlruns.db
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mlflow
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
