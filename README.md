@@ -169,21 +169,29 @@ kubectl port-forward deployment/mlflow-tracking -n mlflow 5000:5000
 Додані маніфести для GitOps та робочий скрипт `train_and_push.py`, що реалізує вимоги ДЗ8 з трекінгу експериментів. Уся логіка зібрана в каталозі `mlops-experiments/`.
 
 ### GitOps-застосунки ArgoCD
-- `mlops-experiments/argocd/applications/*.yaml` — чотири `Application`, що підтягують MinIO, PostgreSQL, PushGateway та MLflow (остання вказує на цей же Git-репозиторій).
+- `mlops-experiments/argocd/applications/*.yaml` — GitOps-маніфести, що розгортають MinIO, PostgreSQL, MLflow Tracking, PushGateway та kube-prometheus-stack (Prometheus + Grafana).
 - Щоб активувати синхронізацію:
   ```bash
   kubectl apply -n infra-tools -f mlops-experiments/argocd/applications/minio.yaml
   kubectl apply -n infra-tools -f mlops-experiments/argocd/applications/postgres.yaml
   kubectl apply -n infra-tools -f mlops-experiments/argocd/applications/mlflow.yaml
   kubectl apply -n infra-tools -f mlops-experiments/argocd/applications/pushgateway.yaml
+  kubectl apply -n infra-tools -f mlops-experiments/argocd/applications/kube-prom-stack.yaml
   ```
-- Перевірте статуси через `kubectl get applications -n infra-tools`, а також `kubectl get pods -n mlflow` та `kubectl get pods -n monitoring`.
+- Перевірте статуси через `kubectl get applications -n infra-tools`, а також:
+  ```bash
+  kubectl get pods -n mlflow
+  kubectl get pods -n monitoring
+  kubectl get prometheus -n monitoring
+  ```
 - Якщо репозиторій або гілка відрізняються, відкоригуйте `repoURL` та `targetRevision` у `mlflow.yaml` перед застосуванням.
 
 ### Port-forward для сервісів
 - MLflow: `kubectl port-forward svc/mlflow-tracking -n mlflow 5000:5000`
+- MinIO (S3 API): `kubectl port-forward svc/mlflow-minio -n mlflow 9000:9000`
+- MinIO Console (опційно): `kubectl port-forward svc/mlflow-minio -n mlflow 9001:9001`
 - PushGateway: `kubectl port-forward svc/pushgateway -n monitoring 9091:9091`
-- Grafana (якщо встановлена kube-prometheus-stack): `kubectl port-forward svc/prometheus-operator-grafana -n monitoring 3000:80`
+- Grafana: `kubectl port-forward svc/kube-prometheus-stack-grafana -n monitoring 3000:80`
 
 ### Скрипт експериментів
 - Каталог `mlops-experiments/experiments/` містить `requirements.txt` та `train_and_push.py` з коментарями українською.
@@ -193,19 +201,32 @@ kubectl port-forward deployment/mlflow-tracking -n mlflow 5000:5000
   python3 -m venv .venv
   source .venv/bin/activate
   pip install -r requirements.txt
+  export AWS_ACCESS_KEY_ID=mlflow-access-key
+  export AWS_SECRET_ACCESS_KEY=mlflow-secret-key
+  export MLFLOW_S3_ENDPOINT_URL=http://localhost:9000
   python train_and_push.py \
     --tracking-uri http://localhost:5000 \
     --pushgateway-url http://localhost:9091
   ```
+- Перед запуском необхідно відкрити порт-форвард до MinIO (`kubectl port-forward svc/mlflow-minio -n mlflow 9000:9000`), щоб артефакти записувались у бакет `mlflow-artifacts`.
+- Якщо бакет ще не створено, виконайте **один раз** (у новій сесії з порт-форвардом 9000):
+  ```bash
+  AWS_ACCESS_KEY_ID=mlflow-access-key \
+  AWS_SECRET_ACCESS_KEY=mlflow-secret-key \
+  aws --endpoint-url http://localhost:9000 s3api create-bucket --bucket mlflow-artifacts
+  ```
 - Скрипт автоматично логує параметри та метрики в MLflow, пушить `mlflow_accuracy` і `mlflow_loss` у PushGateway та копіює артефакти найкращого запуску у `mlops-experiments/best_model/<run_id>/`.
 
 ### Перевірка метрик у Grafana
-- Після порт-форварду Grafana відкрийте <http://localhost:3000> і зайдіть до **Explore → Prometheus**.
-- Запити `mlflow_accuracy` та `mlflow_loss` покажуть метрики для всіх `run_id`.
+- Після порт-форварду Grafana відкрийте <http://localhost:3000>, увійдіть (`admin` / `prom-operator`) та перейдіть у **Connections → Data sources → Prometheus** — натисніть `Save & test`, очікуємо `Data source is working`.
+- У **Explore → Prometheus** виконайте запити `mlflow_accuracy` та `mlflow_loss`, щоб переглянути метрики всіх `run_id`.
+- За потреби переконайтеся, що Prometheus доступний у кластері: `kubectl get svc kube-prometheus-stack-prometheus -n monitoring`.
 
 ### Скріншоти
-- ![MLflow UI](docs/screenshots/mlflow-ui.png)
-- ![Grafana Explore](docs/screenshots/grafana-explore.png)
+- ![MLflow UI](docs/screenshots/MLflow.png)
+- ![Grafana Explore](docs/screenshots/Grafana.png)
+- ![Prometheus Targets](docs/screenshots/Pronetheus.png)
+- ![MinIO Console](docs/screenshots/MinIO.png)
 
 > Скріншоти в каталозі `docs/screenshots/` є заглушками — замініть їх реальними зображеннями після перевірки вашого деплою.
 

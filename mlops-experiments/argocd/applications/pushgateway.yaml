@@ -13,8 +13,6 @@ spec:
     repoURL: https://github.com/Oleksandr-Ho/MLOps.git
     targetRevision: lesson-8
     path: mlops-experiments/argocd/apps/pushgateway
-    directory:
-      recurse: true
   destination:
     namespace: monitoring
     server: https://kubernetes.default.svc
