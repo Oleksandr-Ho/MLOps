@@ -201,6 +201,12 @@ kubectl port-forward deployment/mlflow-tracking -n mlflow 5000:5000
     --pushgateway-url http://localhost:9091
   ```
 - Перед запуском необхідно відкрити порт-форвард до MinIO (`kubectl port-forward svc/mlflow-minio -n mlflow 9000:9000`), щоб артефакти записувались у бакет `mlflow-artifacts`.
+- Якщо бакет ще не створено, виконайте **один раз** (у новій сесії з порт-форвардом 9000):
+  ```bash
+  AWS_ACCESS_KEY_ID=mlflow-access-key \
+  AWS_SECRET_ACCESS_KEY=mlflow-secret-key \
+  aws --endpoint-url http://localhost:9000 s3api create-bucket --bucket mlflow-artifacts
+  ```
 - Скрипт автоматично логує параметри та метрики в MLflow, пушить `mlflow_accuracy` і `mlflow_loss` у PushGateway та копіює артефакти найкращого запуску у `mlops-experiments/best_model/<run_id>/`.
 
 ### Перевірка метрик у Grafana
