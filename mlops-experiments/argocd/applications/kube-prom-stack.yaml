@@ -12,7 +12,7 @@ spec:
     targetRevision: 75.16.1
     chart: kube-prometheus-stack
     helm:
-      skipCrds: false
+      skipCrds: true
       values: |
         grafana:
           adminPassword: prom-operator
