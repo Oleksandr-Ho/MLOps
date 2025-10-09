@@ -164,6 +164,51 @@ kubectl port-forward deployment/mlflow-tracking -n mlflow 5000:5000
 - Репозиторій із Application: `https://github.com/Oleksandr-Ho/goit-argo`
 - Маніфест `application.yaml` і namespaces знаходяться безпосередньо у корені цього репозиторію.
 
+## Lesson 8 — Моніторинг експериментів
+
+Додані маніфести для GitOps та робочий скрипт `train_and_push.py`, що реалізує вимоги ДЗ8 з трекінгу експериментів. Уся логіка зібрана в каталозі `mlops-experiments/`.
+
+### GitOps-застосунки ArgoCD
+- `mlops-experiments/argocd/applications/*.yaml` — чотири `Application`, що підтягують MinIO, PostgreSQL, PushGateway та MLflow (остання вказує на цей же Git-репозиторій).
+- Щоб активувати синхронізацію:
+  ```bash
+  kubectl apply -n infra-tools -f mlops-experiments/argocd/applications/minio.yaml
+  kubectl apply -n infra-tools -f mlops-experiments/argocd/applications/postgres.yaml
+  kubectl apply -n infra-tools -f mlops-experiments/argocd/applications/mlflow.yaml
+  kubectl apply -n infra-tools -f mlops-experiments/argocd/applications/pushgateway.yaml
+  ```
+- Перевірте статуси через `kubectl get applications -n infra-tools`, а також `kubectl get pods -n mlflow` та `kubectl get pods -n monitoring`.
+- Якщо репозиторій або гілка відрізняються, відкоригуйте `repoURL` та `targetRevision` у `mlflow.yaml` перед застосуванням.
+
+### Port-forward для сервісів
+- MLflow: `kubectl port-forward svc/mlflow-tracking -n mlflow 5000:5000`
+- PushGateway: `kubectl port-forward svc/pushgateway -n monitoring 9091:9091`
+- Grafana (якщо встановлена kube-prometheus-stack): `kubectl port-forward svc/prometheus-operator-grafana -n monitoring 3000:80`
+
+### Скрипт експериментів
+- Каталог `mlops-experiments/experiments/` містить `requirements.txt` та `train_and_push.py` з коментарями українською.
+- Приклад запуску:
+  ```bash
+  cd mlops-experiments/experiments
+  python3 -m venv .venv
+  source .venv/bin/activate
+  pip install -r requirements.txt
+  python train_and_push.py \
+    --tracking-uri http://localhost:5000 \
+    --pushgateway-url http://localhost:9091
+  ```
+- Скрипт автоматично логує параметри та метрики в MLflow, пушить `mlflow_accuracy` і `mlflow_loss` у PushGateway та копіює артефакти найкращого запуску у `mlops-experiments/best_model/<run_id>/`.
+
+### Перевірка метрик у Grafana
+- Після порт-форварду Grafana відкрийте <http://localhost:3000> і зайдіть до **Explore → Prometheus**.
+- Запити `mlflow_accuracy` та `mlflow_loss` покажуть метрики для всіх `run_id`.
+
+### Скріншоти
+- ![MLflow UI](docs/screenshots/mlflow-ui.png)
+- ![Grafana Explore](docs/screenshots/grafana-explore.png)
+
+> Скріншоти в каталозі `docs/screenshots/` є заглушками — замініть їх реальними зображеннями після перевірки вашого деплою.
+
 
 ## Повторне використання стану в наступних завданнях
 

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-postgresql
+  namespace: mlflow
+  labels:
+    app.kubernetes.io/name: mlflow-postgresql
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: mlflow-postgresql
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

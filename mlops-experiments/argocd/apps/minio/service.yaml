@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-minio
+  namespace: mlflow
+  labels:
+    app.kubernetes.io/name: mlflow-minio
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: mlflow-minio
+  ports:
+    - name: api
+      port: 9000
+      targetPort: api
+    - name: console
+      port: 9001
+      targetPort: console
