@@ -193,10 +193,14 @@ kubectl port-forward deployment/mlflow-tracking -n mlflow 5000:5000
   python3 -m venv .venv
   source .venv/bin/activate
   pip install -r requirements.txt
+  export AWS_ACCESS_KEY_ID=mlflow-access-key
+  export AWS_SECRET_ACCESS_KEY=mlflow-secret-key
+  export MLFLOW_S3_ENDPOINT_URL=http://localhost:9000
   python train_and_push.py \
     --tracking-uri http://localhost:5000 \
     --pushgateway-url http://localhost:9091
   ```
+- Перед запуском необхідно відкрити порт-форвард до MinIO (`kubectl port-forward svc/mlflow-minio -n mlflow 9000:9000`), щоб артефакти записувались у бакет `mlflow-artifacts`.
 - Скрипт автоматично логує параметри та метрики в MLflow, пушить `mlflow_accuracy` і `mlflow_loss` у PushGateway та копіює артефакти найкращого запуску у `mlops-experiments/best_model/<run_id>/`.
 
 ### Перевірка метрик у Grafana
